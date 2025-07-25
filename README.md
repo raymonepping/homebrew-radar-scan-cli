@@ -103,14 +103,14 @@ brew install vault-radar
 
 ## 🙋 FAQ
 
-Q: Does this upload my code anywhere?
+**Q: Does this upload my code anywhere?**  
 A: No. All scans run locally. Vault Radar doesn’t upload files.
 
-Q: Can I use this in CI/CD?
+**Q: Can I use this in CI/CD?**  
 A: 100%. All output is machine- and human-readable.
 
-Q: How do I update templates or logic?
-A: Edit the files in tpl/ or lib/ — the main script will find them, even from Homebrew.
+**Q: How do I update templates or logic?**  
+A: Edit the files in `tpl/` or `lib/` — the main script will find them, even from Homebrew.
 
 ---
 
