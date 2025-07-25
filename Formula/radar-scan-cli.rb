@@ -10,7 +10,7 @@ class RadarScanCli < Formula
   depends_on "jq"
 
   def install
-    bin.install "bin/radar_scan.sh" => "radar_scan"
+    bin.install "bin/radar_scan" => "radar_scan"
     pkgshare.install %w[lib tpl]
   end
 
