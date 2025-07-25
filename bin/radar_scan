@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # shellcheck disable=SC2034
-VERSION="1.0.3"
+VERSION="1.0.4"
 
 # --- Homebrew & local lookup ---
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
@@ -54,7 +54,18 @@ fi
 # Set template for Markdown reports
 MD_TEMPLATE="$TPL_DIR/radar_agent.tpl"
 
-DEFAULT_REPO_JSON=".scan.repositories.json"
+DEFAULT_REPO_JSON="${HOME}/.scan.repositories.json"
+
+# On first use, check if the file exists in $HOME; otherwise, fall back to local dir
+if [[ -f "$DEFAULT_REPO_JSON" ]]; then
+  REPO_JSON="$DEFAULT_REPO_JSON"
+elif [[ -f ".scan.repositories.json" ]]; then
+  REPO_JSON=".scan.repositories.json"
+else
+  echo "❌ Repo JSON file not found in \$HOME or local directory."
+  exit 1
+fi
+
 DEFAULT_FORMAT="csv"
 DEFAULT_TYPE="repo"
 USER_OUTFILE=""
