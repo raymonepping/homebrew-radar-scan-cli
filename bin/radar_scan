@@ -1,8 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# --- Vault Radar/HCP config loader ---
+load_vault_env_config() {
+  local env_file=""
+  if [[ -f "./.vault-config.env" ]]; then
+    env_file="./.vault-config.env"
+  elif [[ -f "${HOME}/.vault-config.env" ]]; then
+    env_file="${HOME}/.vault-config.env"
+  fi
+
+  if [[ -n "$env_file" ]]; then
+    # Only load safe lines, ignore comments and blanks
+    set -a
+    # shellcheck disable=SC1090
+    source <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' "$env_file")
+    set +a
+  fi
+}
+
+load_vault_env_config
+
+
 # shellcheck disable=SC2034
-VERSION="1.0.4"
+VERSION="1.0.5"
 
 # --- Homebrew & local lookup ---
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
