@@ -1,0 +1,3 @@
+category,description,created_at,author,severity,is_historic,deep_link,path,value_hash,fingerprint,textual_context,activeness,tags,managed_location,managed_location_is_latest,total_managed_locations
+secret,GitHub personal access token,,,critical,,stream:///.env:1:23,.env,cAOzBrsSuoL+eq5O1pCbMJ+9u1MYB2VqHsbr9wkKMls,e065c27436dcc165406864f0540e6703096f7e592fca86615bffe71961699709,...GIT_TOKEN=***,active,active_secret,,,0
+secret,HCP client secret,,,info,,stream:///.env:6:19,.env,uRWXOY3ACLG1dMTl2tPuRZpJygnTgn8qGj37MEl/sYg,517b40a118df445c914db225b47633a01c9b114d1a685d424795e46440509449,...ENT_SECRET=***,unknown,experimental_secret,,,0
