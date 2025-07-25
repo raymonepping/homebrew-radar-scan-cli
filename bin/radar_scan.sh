@@ -1,0 +1,375 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# shellcheck disable=SC2034
+VERSION="1.0.0"
+
+# --- Homebrew & local lookup ---
+HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
+
+POSSIBLE_LIB_DIRS=(
+  "$HOMEBREW_PREFIX/share/radar-scan-cli/lib"
+  "$HOMEBREW_PREFIX/opt/radar-scan-cli/share/radar-scan-cli/lib"
+  "./lib"
+)
+
+LIB_DIR=""
+for d in "${POSSIBLE_LIB_DIRS[@]}"; do
+  if [[ -d "$d" ]]; then
+    LIB_DIR="$d"
+    break
+  fi
+done
+if [[ -z "$LIB_DIR" ]]; then
+  echo "❌ Could not locate lib/ directory. Searched: ${POSSIBLE_LIB_DIRS[*]}"
+  exit 1
+fi
+
+if [[ -f "$LIB_DIR/scan_output.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$LIB_DIR/scan_output.sh"
+else
+  echo "❌ Could not find scan_output.sh in $LIB_DIR"
+  exit 1
+fi
+
+POSSIBLE_TPL_DIRS=(
+  "$HOMEBREW_PREFIX/share/radar-scan-cli/tpl"
+  "$HOMEBREW_PREFIX/opt/radar-scan-cli/share/radar-scan-cli/tpl"
+  "./tpl"
+)
+
+TPL_DIR=""
+for t in "${POSSIBLE_TPL_DIRS[@]}"; do
+  if [[ -d "$t" ]]; then
+    TPL_DIR="$t"
+    break
+  fi
+done
+if [[ -z "$TPL_DIR" ]]; then
+  echo "❌ Could not locate tpl/ directory. Searched: ${POSSIBLE_TPL_DIRS[*]}"
+  exit 1
+fi
+
+# Set template for Markdown reports
+MD_TEMPLATE="$TPL_DIR/radar_agent.tpl"
+
+DEFAULT_REPO_JSON=".scan.repositories.json"
+DEFAULT_FORMAT="csv"
+DEFAULT_TYPE="repo"
+USER_OUTFILE=""
+
+show_help() {
+  cat <<EOF
+Usage:
+  $(basename "$0") [--type repo|folder|file|docker-image] [options] [ARG]
+
+  --type <mode>   Scan type: repo (default, batch via JSON), folder, file, or docker-image
+  --image <ref>   Docker image name:tag (for --type docker-image)
+  --format <fmt>  Output format: csv (default), json, sarif, md (Markdown report)
+  --disable-ui    Suppress CLI UI/log output
+  --offline       Run scans in offline mode (no HCP)
+  --outfile, -o   Output filename for result file (csv/json/md)
+  --help          Show this help and exit
+  --version       Show version and exit
+
+  For --type repo:
+      ARG is optional, defaults to $DEFAULT_REPO_JSON (a list of repos to scan)
+  For --type file/folder:
+      ARG is required and should be the path to scan
+  For --type docker-image:
+      --image is required and should be the image:tag to scan
+
+  Note: If no secrets are found, the scan output file will be deleted.
+        If --format md, a Markdown report is created only if findings exist.
+EOF
+}
+
+# --- Defaults ---
+TYPE="$DEFAULT_TYPE"
+FORMAT="$DEFAULT_FORMAT"
+REPO_JSON="$DEFAULT_REPO_JSON"
+DISABLE_UI=""
+OFFLINE=""
+PATH_ARG=""
+IMAGE_ARG=""
+
+# --- Argument parsing ---
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --type)
+    TYPE="$2"
+    shift 2
+    ;;
+  --image)
+    IMAGE_ARG="$2"
+    shift 2
+    ;;
+  --format | --output)
+    FORMAT="$2"
+    shift 2
+    ;;
+  --outfile | -o)
+    USER_OUTFILE="$2"
+    shift 2
+    ;;
+  --disable-ui)
+    DISABLE_UI="--disable-ui"
+    shift
+    ;;
+  --offline)
+    OFFLINE="--offline"
+    shift
+    ;;
+  --help)
+    show_help
+    exit 0
+    ;;
+  --version)
+    echo "$(basename "$0") v$VERSION"
+    exit 0
+    ;;
+  -*)
+    echo "❌ Unknown flag: $1"
+    show_help
+    exit 1
+    ;;
+  *)
+    if [[ -z "$PATH_ARG" ]]; then
+      PATH_ARG="$1"
+      shift
+    else
+      echo "❌ Unexpected extra argument: $1"
+      show_help
+      exit 1
+    fi
+    ;;
+  esac
+done
+
+print_divider() { echo "----------------------------------------"; }
+
+timestamp="$(date +%Y%m%d_%H%M%S)"
+
+# Check required tool
+if ! command -v vault-radar &>/dev/null; then
+  echo "❌ vault-radar is required but not installed or not in \$PATH. Exiting."
+  echo "ℹ️  Install it via; brew tap hashicorp/tap & brew install vault-radar"
+  exit 1
+fi
+
+if [[ "$FORMAT" == "md" ]]; then
+  OUTPUT_FORMAT="json"
+else
+  OUTPUT_FORMAT="$FORMAT"
+fi
+
+# --- Repo scan ---
+if [[ "$TYPE" == "repo" ]]; then
+  [[ -n "$PATH_ARG" ]] && REPO_JSON="$PATH_ARG"
+  if [[ ! -f "$REPO_JSON" ]]; then
+    echo "❌ Repo JSON file not found: $REPO_JSON"
+    exit 1
+  fi
+  if ! command -v jq &>/dev/null; then
+    echo "❌ jq is required for repo mode."
+    exit 1
+  fi
+
+  repos_len=$(jq length "$REPO_JSON")
+  overall_found=0
+
+  for ((i = 0; i < repos_len; i++)); do
+    name=$(jq -r ".[$i].name" "$REPO_JSON")
+    url=$(jq -r ".[$i].url" "$REPO_JSON")
+    name_safe="$(safe_name "$name")"
+
+    if [[ "$FORMAT" == "md" ]]; then
+      OUTFILE_JSON="scan_${name_safe}_${timestamp}.json"
+      OUTFILE_MD="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.md}"
+    else
+      OUTFILE_JSON="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.${OUTPUT_FORMAT}}"
+      OUTFILE_MD=""
+    fi
+
+    baseline="baseline_${name_safe}.${OUTPUT_FORMAT}"
+
+    echo "🔍 Scanning [repo] $name at $url ..."
+    scan_cmd=(vault-radar scan repo --url "$url" --outfile "$OUTFILE_JSON" --format "$OUTPUT_FORMAT")
+    [[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
+    [[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
+    [[ -f "$baseline" && -s "$baseline" ]] && scan_cmd+=(--baseline "$baseline")
+    [[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
+    "${scan_cmd[@]}"
+
+    # Calculate findings only from JSON used for output
+    if [[ "$FORMAT" == "md" ]]; then
+      findings=$(do_json_findings "$OUTFILE_JSON")
+    elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+      findings=$(do_csv_findings "$OUTFILE_JSON")
+    elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
+      findings=$(do_json_findings "$OUTFILE_JSON")
+    else
+      findings=0
+    fi
+
+    findings="$(echo "$findings" | xargs)" # This will *always* strip spaces
+
+    if [[ $findings -gt 0 && -f "$OUTFILE_JSON" ]]; then
+
+      if [[ "$FORMAT" == "md" ]]; then
+        render_markdown_report "$OUTFILE_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
+        printf "🛑 %s secrets found in [%s] (see %s)\n" "$findings" "$name" "$OUTFILE_MD"
+        echo "📝 Markdown report generated: $OUTFILE_MD"
+        rm -f "$OUTFILE_JSON"
+        cp "$OUTFILE_MD" "$baseline" 2>/dev/null || true
+
+      else
+        printf "🛑 %s secrets found in [%s] (see %s)\n" "$findings" "$name" "$OUTFILE_JSON"
+        echo "ℹ️  Scan output: $OUTFILE_JSON"
+        [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$OUTFILE_JSON" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
+        [[ "$FORMAT" == "json" ]] && jq -c '.' "$OUTFILE_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
+        cp "$OUTFILE_JSON" "$baseline"
+
+      fi
+      overall_found=$((overall_found + findings))
+
+    else
+      echo "✅ No secrets found in [$name]."
+      echo "🚦 Battle-tested. Clean."
+      rm -f "$OUTFILE_JSON" "$OUTFILE_MD" 2>/dev/null || true
+    fi
+
+    print_divider
+
+  done
+  echo
+  echo "=== Scan complete. Total secrets found across all repos: $overall_found ==="
+
+# --- Docker image scan ---
+elif [[ "$TYPE" == "docker-image" ]]; then
+  [[ -z "$IMAGE_ARG" ]] && {
+    echo "❌ --image <docker-image> required with --type docker-image"
+    show_help
+    exit 1
+  }
+  image_safe="$(safe_name "$IMAGE_ARG")"
+  if [[ "$FORMAT" == "md" ]]; then
+    OUTFILE_JSON="scan_${image_safe}_${timestamp}.json"
+    OUTFILE_MD="${USER_OUTFILE:-scan_${image_safe}_${timestamp}.md}"
+  else
+    OUTFILE_JSON="${USER_OUTFILE:-scan_${image_safe}_${timestamp}.${OUTPUT_FORMAT}}"
+    OUTFILE_MD=""
+  fi
+
+  scan_cmd=(vault-radar scan docker-image --image "$IMAGE_ARG" --outfile "$OUTFILE_JSON" --format "$OUTPUT_FORMAT")
+  [[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
+  [[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
+  echo "🔍 Scanning docker image [$IMAGE_ARG] ..."
+  [[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
+  "${scan_cmd[@]}"
+
+  # Calculate findings only from JSON used for output
+  if [[ "$FORMAT" == "md" ]]; then
+    findings=$(do_json_findings "$OUTFILE_JSON")
+  elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+    findings=$(do_csv_findings "$OUTFILE_JSON")
+  elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
+    findings=$(do_json_findings "$OUTFILE_JSON")
+  else
+    findings=0
+  fi
+
+  findings="$(echo "$findings" | xargs)"
+
+  if [[ $findings -gt 0 && -f "$OUTFILE_JSON" ]]; then
+    if [[ "$FORMAT" == "md" ]]; then
+      render_markdown_report "$OUTFILE_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
+      printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$IMAGE_ARG" "$OUTFILE_MD"
+      echo "📝 Markdown report generated: $OUTFILE_MD"
+      rm -f "$OUTFILE_JSON"
+    else
+      printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$IMAGE_ARG" "$OUTFILE_JSON"
+      echo "ℹ️  Scan output: $OUTFILE_JSON"
+      [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$OUTFILE_JSON" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
+      [[ "$FORMAT" == "json" ]] && jq -c '.' "$OUTFILE_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
+    fi
+  else
+    echo "✅ No secrets found in docker image $IMAGE_ARG."
+    echo "🚦 Battle-tested. Clean."
+    rm -f "$OUTFILE_JSON" "$OUTFILE_MD" 2>/dev/null || true
+  fi
+  print_divider
+
+# --- File/folder scan ---
+elif [[ "$TYPE" == "file" || "$TYPE" == "folder" ]]; then
+  [[ -z "$PATH_ARG" ]] && {
+    echo "❌ Path required for --type $TYPE"
+    show_help
+    exit 1
+  }
+  name_safe="$(safe_name "$(basename "$PATH_ARG")")"
+
+  if [[ "$FORMAT" == "md" ]]; then
+    if [[ -n "$USER_OUTFILE" ]]; then
+      OUTFILE_MD="${USER_OUTFILE%.md}.md"
+      OUTFILE_JSON="${OUTFILE_MD%.md}.json"
+    else
+      OUTFILE_JSON="scan_${name_safe}_${timestamp}.json"
+      OUTFILE_MD="scan_${name_safe}_${timestamp}.md"
+    fi
+    SCAN_OUT="$OUTFILE_JSON"
+    REPORT_OUT="$OUTFILE_MD"
+  else
+    OUTFILE="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.${OUTPUT_FORMAT}}"
+    SCAN_OUT="$OUTFILE"
+    REPORT_OUT=""
+  fi
+
+  scan_cmd=(vault-radar scan "$TYPE" --path "$PATH_ARG" --outfile "$SCAN_OUT" --format "$OUTPUT_FORMAT")
+  [[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
+  [[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
+  echo "🔍 Scanning [$TYPE] $PATH_ARG ..."
+  [[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
+  "${scan_cmd[@]}"
+
+  if [[ "$FORMAT" == "md" ]]; then
+    findings=$(do_json_findings "$SCAN_OUT")
+  elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+    findings=$(do_csv_findings "$SCAN_OUT")
+  elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
+    findings=$(do_json_findings "$SCAN_OUT")
+  else
+    findings=0
+  fi
+
+  findings="$(echo "$findings" | xargs)"
+
+  if [[ $findings -gt 0 && -f "$SCAN_OUT" ]]; then
+    if [[ "$FORMAT" == "md" ]]; then
+      render_markdown_report "$SCAN_OUT" "$REPORT_OUT" "$MD_TEMPLATE"
+      printf "🛑 %s secrets found in [%s] %s (see %s)\n" \
+        "$findings" "$TYPE" "$PATH_ARG" "$REPORT_OUT"
+      echo "📝 Markdown report generated: $REPORT_OUT"
+      rm -f "$SCAN_OUT"
+    else
+      printf "🛑 %s secrets found in [%s] (see %s)\n" \
+        "$findings" "$TYPE" "$SCAN_OUT"
+
+      echo "ℹ️  Scan output: $SCAN_OUT"
+      [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$SCAN_OUT" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
+      [[ "$FORMAT" == "json" ]] && jq -c '.' "$SCAN_OUT" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
+    fi
+  else
+    echo "✅ No secrets found in [$TYPE] $PATH_ARG."
+    echo "🚦 Battle-tested. Clean."
+    rm -f "$SCAN_OUT" "$REPORT_OUT" 2>/dev/null || true
+  fi
+
+  print_divider
+
+else
+  echo "❌ Unknown --type: $TYPE"
+  show_help
+  exit 1
+fi
