@@ -35,7 +35,7 @@ pipeline {
             }
         }
         stage('Commit & Push') {
-            steps { sh 'commit_gh --bump patch --verify' }
+            steps { sh 'commit_gh --verify' }
             // Remove --quiet for now to debug errors!
         }
     }
