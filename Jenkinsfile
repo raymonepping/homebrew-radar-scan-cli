@@ -9,10 +9,5 @@ pipeline {
                 sh 'bump_version ./bin/radar_scan --patch'
             }
         }
-        stage('Commit and Tag') {
-            steps {
-                sh 'commit_gh --bump patch --verify'
-            }
-        }
     }
 }
