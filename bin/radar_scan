@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck disable=SC2034
+VERSION="1.0.6"
+
 # --- Vault Radar/HCP config loader ---
 load_vault_env_config() {
   local env_file=""
@@ -20,10 +23,6 @@ load_vault_env_config() {
 }
 
 load_vault_env_config
-
-
-# shellcheck disable=SC2034
-VERSION="1.0.6"
 
 # --- Homebrew & local lookup ---
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-/opt/homebrew}"
