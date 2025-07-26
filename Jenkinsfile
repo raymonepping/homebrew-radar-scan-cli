@@ -16,6 +16,13 @@ pipeline {
                 sh 'git checkout main'
             }
         }
+        stage('Sync Branch') {
+            steps {
+                // Make sure workspace is fully aligned to remote main!
+                sh 'git fetch origin main'
+                sh 'git reset --hard origin/main'
+            }
+        }
         stage('Sanity Check') {
             steps { sh 'sanity_check ./bin/radar_scan' }
         }
@@ -27,16 +34,13 @@ pipeline {
         }
         stage('Setup Git Credentials') {
             steps {
-                sh '''
-                git config --global user.email "jenkins@example.com"
-                git config --global user.name "Jenkins Bot"
-                git remote set-url origin https://$GITHUB_TOKEN@github.com/raymonepping/homebrew-radar-scan-cli.git
-                '''
+                sh 'git config --global user.email jenkins@example.com'
+                sh 'git config --global user.name "Jenkins Bot"'
+                sh 'git remote set-url origin https://$GITHUB_TOKEN@github.com/raymonepping/homebrew-radar-scan-cli.git'
             }
         }
         stage('Commit & Push') {
-            steps { sh 'commit_gh --verify' }
-            // Remove --quiet for now to debug errors!
+            steps { sh 'commit_gh --bump patch --verify' }
         }
     }
 }
