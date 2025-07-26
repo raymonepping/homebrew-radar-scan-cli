@@ -56,13 +56,15 @@ export FOLDER_TREE_HOME=/opt/homebrew/opt/..
 |   |-- readme_06_article.tpl
 |   `-- readme_07_footer.tpl
 |-- .version
+|-- FOLDER_TREE.md
 |-- LICENSE
 |-- README.md
 |-- baseline_radar-love-cli.csv
 |-- reload_version.sh*
+|-- scan_file.md
 `-- scan_radar-love-cli_20250725_160124.csv
 
-6 directories, 21 files
+6 directories, 23 files
 ```
 
 ---
