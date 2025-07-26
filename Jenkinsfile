@@ -38,9 +38,12 @@ pipeline {
         }
         stage('Generate Self Doc') {
             steps {
-                sh 'self_doc -t ./tpl -f ./bin/radar_scan -d . -o README.md'
+                sh '''
+                    chmod +x ./bin/radar_scan
+                    self_doc -t ./tpl -f ./bin/radar_scan -d . -o README.md
+                '''
             }
-        }        
+        } 
         stage('Setup Git Credentials') {
             steps {
                 sh 'git config --global user.email jenkins@example.com'
