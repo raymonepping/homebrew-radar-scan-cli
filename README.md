@@ -3,7 +3,7 @@
 > "Structure isn't boring – it's your first line of clarity." — *You (probably during a cleanup)*
 
 [![brew install](https://img.shields.io/badge/brew--install-success-green?logo=homebrew)](https://github.com/raymonepping/homebrew-radar_scan)
-[![version](https://img.shields.io/badge/version-1.0.8-blue)](https://github.com/raymonepping/homebrew-radar_scan)
+[![version](https://img.shields.io/badge/version-1.0.9-blue)](https://github.com/raymonepping/homebrew-radar_scan)
 
 ---
 
