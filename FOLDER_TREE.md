@@ -1,4 +1,4 @@
-## 📁 Folder Tree - 2025-07-26 22:03:08 ##
+## 📁 Folder Tree - 2025-07-26 22:07:28 ##
 
 [![Folder Tree](https://img.shields.io/badge/folder--tree-generated-blue?logo=tree&style=flat-square)](./FOLDER_TREE.md)
 [![Folder Tree Version](https://img.shields.io/badge/folder--tree-v1.5.6-purple?style=flat-square)](./FOLDE[32m✅ Markdown output written to (overwrite): FOLDER_TREE.md[0m
@@ -31,9 +31,8 @@ pt-defensive--mode-blueviolet?logo=gnubash&logoColor=white&style=flat-square)](h
 |-- README.md
 |-- baseline_radar-love-cli.csv
 |-- reload_version.sh*
-|-- scan_file.md
 `-- scan_radar-love-cli_20250725_160124.csv
 
-6 directories, 23 files
+6 directories, 22 files
 
 ---
