@@ -1,121 +1,109 @@
-# 🚨 radar-scan-cli: Battle-Tested Vault Radar CLI for DevOps & Compliance
+# radar_scan 🌳
 
-Effortlessly scan your code, repos, images, or folders for secrets & sensitive data — powered by [HashiCorp Vault Radar](https://developer.hashicorp.com/vault/docs/radar).  
-Modular, Homebrew-ready, and designed for modern CI/CD and local workflows.
+> "Structure isn't boring – it's your first line of clarity." — *You (probably during a cleanup)*
 
----
-
-## 🧑‍💻 Why radar-scan-cli?
-
-- **Zero bullshit:** Clean Bash, portable, no Python or Node dependencies
-- **Smart output:** Markdown, CSV, JSON, or SARIF — perfect for audits or CI
-- **No lock-in:** Works with any repo, Docker image, or folder (local or remote)
-- **Baseline logic:** Know what’s new, not just what’s always there
-- **Built for the loop:** Modular structure for easy extension, Homebrew install, and team use
+[![brew install](https://img.shields.io/badge/brew--install-success-green?logo=homebrew)](https://github.com/raymonepping/homebrew-radar_scan)
+[![version](https://img.shields.io/badge/version-1.0.7-blue)](https://github.com/raymonepping/homebrew-radar_scan)
 
 ---
 
-## 🚀 Installation
+## 🧭 What Is This?
 
-### Homebrew (recommended)
+radar_scan is a Homebrew-installable, wizard-powered CLI.
+
+---
+
+## 🚀 Quickstart
 
 ```bash
-brew tap raymonepping/radar-scan-cli
-brew install radar-scan-cli
+brew tap 
+brew install /radar_scan
+radar_scan
 ```
 
-Manual
-Just clone and run:
+---
+
+Want to customize?
 
 ```bash
-git clone https://github.com/yourusername/radar-scan-cli.git
-cd radar-scan-cli
-./bin/radar_scan.sh --help
+export FOLDER_TREE_HOME=/opt/homebrew/opt/..
 ```
+
 ---
 
-## ⚡️ Usage
+## 📂 Project Structure
 
+```
+./
+├── bin/
+│   ├── CHANGELOG_radar_scan.md
+│   └── radar_scan*
+├── examples/
+│   ├── scan_file.csv
+│   ├── scan_file.json
+│   └── scan_file.md
+├── Formula/
+│   └── radar-scan-cli.rb
+├── lib/
+│   └── scan_output.sh*
+├── tpl/
+│   ├── radar_agent.tpl
+│   ├── readme_01_header.tpl
+│   ├── readme_02_project.tpl
+│   ├── readme_03_structure.tpl
+│   ├── readme_04_body.tpl
+│   ├── readme_05_quote.tpl
+│   ├── readme_06_article.tpl
+│   └── readme_07_footer.tpl
+├── .scan.repositories.json
+├── .version
+├── baseline_radar-love-cli.csv
+├── LICENSE
+├── README.md
+├── reload_version.sh*
+└── scan_radar-love-cli_20250725_160124.csv
+
+6 directories, 22 files
+```
+
+---
+
+## 🔑 Key Features
+
+- 
+
+---
+
+### Auto-generate folder tree in Markdown
 ```bash
-radar_scan.sh --type file README.md --format md
-radar_scan.sh --type repo --outfile results.csv
-radar_scan.sh --type docker-image --image my/image:latest --format json
-radar_scan.sh --type folder ./src --format sarif
+radar_scan
 ```
 
-### Supported types:
+---
 
-- repo: Scan a list of repos from .scan.repositories.json
-- file: Scan a single file
-- folder: Scan all files in a directory
-- docker-image: Scan a local or remote Docker image
+### ✨ Combine with
 
-### Supported formats:
-
-csv, json, sarif, md (Markdown)
+- 
 
 ---
 
-## 📝 Example Output
+## 🧠 Philosophy
 
-```yaml
-🔍 Scanning [file] README.md ...
-Scan completed
+radar_scan 
 
-Summary:
-   New secrets found: 2
-   Baseline secrets found: 0
+> Some might say that sunshine follows thunder
+> Go and tell it to the man who cannot shine
 
-🛑 2 secrets found in [file] README.md (see README_scan.md)
-📝 Markdown report generated: README_scan.md
-```
-The Markdown output is fully audit-ready and easy to include in compliance reports.
+> Some might say that we should never ponder
+> On our thoughts today ‘cos they hold sway over time
 
 ---
 
-## 🏗️ Project Structure
-```python
-bin/
-  radar_scan.sh          # Main CLI
-lib/
-  scan_output.sh         # Output formatting and helpers
-tpl/
-  radar_agent.tpl        # Markdown template
-.scan.repositories.json  # (optional) Repo batch file
-```
----
-## 🔒 Powered by Vault Radar
+## 📘 Read the Full Medium.com article
 
-This CLI wraps HashiCorp Vault Radar
-Install via:
-
-```bash
-brew tap hashicorp/tap
-brew install vault-radar
-```
----
-## 💡 Pro tips
-- Baseline: Keep baseline_* files in your repo for diff-only scanning
-- Homebrew install: Works out of the box, even on Mac ARM (M1/M2)
-- Modular: Drop in your own output/scan logic in lib/
+📖 [Article](..) 
 
 ---
 
-## 🙋 FAQ
-
-**Q: Does this upload my code anywhere?**  
-A: No. All scans run locally. Vault Radar doesn’t upload files.
-
-**Q: Can I use this in CI/CD?**  
-A: 100%. All output is machine- and human-readable.
-
-**Q: How do I update templates or logic?**  
-A: Edit the files in `tpl/` or `lib/` — the main script will find them, even from Homebrew.
-
----
-
-## 🤖 Credits
-Raymon Epping & contributors
-Inspired by the “do one thing well” Bash mantra, and built for modern security teams.
-
-© HashiCorp Vault Radar - Automated scan CLI
+© 2025 Your Name  
+🧠 Powered by self_docs.sh — 🌐 Works locally, CI/CD, and via Brew

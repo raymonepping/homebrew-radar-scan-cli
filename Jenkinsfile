@@ -36,6 +36,11 @@ pipeline {
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
+        stage('Generate Self Doc') {
+            steps {
+                sh 'self_doc -t ./tpl -f ./bin/radar_scan -d . -o README.md'
+            }
+        }        
         stage('Setup Git Credentials') {
             steps {
                 sh 'git config --global user.email jenkins@example.com'
