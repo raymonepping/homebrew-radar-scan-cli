@@ -14,14 +14,14 @@ pipeline {
                 sh 'sanity_check ./bin/radar_scan'
             }
         }        
-        stage('Bump Version') {
-            steps {
-                sh 'bump_version ./bin/radar_scan --patch'
-            }
-        }
         stage('Scan folder') {
             steps {
                 sh 'radar_scan --disable-ui --type folder ./ --format json --outfile scan_file'
+            }
+        }
+        stage('Bump Version') {
+            steps {
+                sh 'bump_version ./bin/radar_scan --patch'
             }
         }
     }
