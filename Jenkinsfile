@@ -29,7 +29,7 @@ pipeline {
         stage('Scan folder') {
             steps {
                 sh '''
-                    radar_scan --disable-ui --type folder ./ --format md --outfile scan_file.md || exit_code=$?
+                    radar_scan --type file .env --format md --disable-ui --outfile scan_file || exit_code=$?
                     if [ -f scan_file ]; then
                         echo "✅ scan_file generated"
                         cat scan_file

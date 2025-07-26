@@ -1,14 +1,13 @@
 # 🚨 Vault Radar Scan Report
 
-Scan completed at: 2025-07-26 21:21:00
+Scan completed at: 2025-07-26 22:11:16
 
 ## Findings
 
 | Category | Path | Line | Context |
 |---|---|---|---|
-| secret | Foo.txt | 1 | ...GIT_TOKEN=*** |
-| secret | Foo.txt | 6 | ...ENT_SECRET=*** |
-| secret | Foo.txt | 8 | ...HUB_TOKEN=*** |
+| secret | .env | 7 | ...ULT_TOKEN=*** |
+| secret | .env | 33 | ...ENT_SECRET=*** |
 
 ---
 
