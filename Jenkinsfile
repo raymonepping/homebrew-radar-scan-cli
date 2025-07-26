@@ -72,6 +72,8 @@ pipeline {
                 sh '''
                     git add README.md FOLDER_TREE.md || true
                     git commit -m "Update self-documentation and folder tree [ci skip]" || echo "No changes to commit"
+                    echo "GitHub remote: $(git config --get remote.origin.url)"
+                    echo "Token length: ${#GITHUB_TOKEN}"
                     git push origin main
                 '''
             }
