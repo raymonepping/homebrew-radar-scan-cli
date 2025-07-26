@@ -24,5 +24,8 @@ pipeline {
                 sh 'bump_version ./bin/radar_scan --patch'
             }
         }
+        stage('Commit & Push') {
+            steps { sh 'commit_gh --quiet' }
+        }
     }
 }
