@@ -63,7 +63,7 @@ pipeline {
                 sh 'git config --global user.name "Jenkins Bot"'
                 // Diagnostics:
                 sh 'echo "Git remote before:"; git remote -v'
-                sh 'git remote set-url origin https://$GITHUB_TOKEN@github.com/raymonepping/homebrew-radar-scan-cli.git'
+                sh 'git remote set-url origin https://x-access-token:$GITHUB_TOKEN@github.com/raymonepping/homebrew-radar-scan-cli.git'
                 sh 'echo "Git remote after:"; git remote -v'
             }
         }
