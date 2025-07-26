@@ -9,20 +9,21 @@ pipeline {
         HCP_CLIENT_SECRET        = credentials('HCP_CLIENT_SECRET')
     }
     stages {
-        stage('Sanity Check') {
+        stage('Checkout') {
             steps {
-                sh 'sanity_check ./bin/radar_scan'
-            }
-        }        
-        stage('Scan folder') {
-            steps {
-                sh 'radar_scan --disable-ui --type folder ./ --format json --outfile scan_file'
+                checkout scm
+                // Ensure we are on the main branch!
+                sh 'git checkout main'
             }
         }
+        stage('Sanity Check') {
+            steps { sh 'sanity_check ./bin/radar_scan' }
+        }
+        stage('Scan folder') {
+            steps { sh 'radar_scan --disable-ui --type folder ./ --format json --outfile scan_file' }
+        }
         stage('Bump Version') {
-            steps {
-                sh 'bump_version ./bin/radar_scan --patch'
-            }
+            steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
         stage('Commit & Push') {
             steps { sh 'commit_gh --quiet' }
