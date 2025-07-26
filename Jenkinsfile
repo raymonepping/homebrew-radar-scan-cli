@@ -11,7 +11,7 @@ pipeline {
         }
         stage('Scan folder') {
             steps {
-                sh 'radar_scan --type folder ./ --format json --outfile scan_file'
+                sh 'radar_scan --disable-ui --type folder ./ --format json --outfile scan_file'
             }
         }
     }
