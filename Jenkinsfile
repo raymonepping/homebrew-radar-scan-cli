@@ -9,6 +9,11 @@ pipeline {
         HCP_CLIENT_SECRET        = credentials('HCP_CLIENT_SECRET')
     }
     stages {
+        stage('Sanity Check') {
+            steps {
+                sh 'sanity_check ./bin/radar_scan'
+            }
+        }        
         stage('Bump Version') {
             steps {
                 sh 'bump_version ./bin/radar_scan --patch'
