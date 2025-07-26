@@ -10,6 +10,11 @@ pipeline {
         GITHUB_TOKEN             = credentials('GITHUB_TOKEN')
     }
     stages {
+        stage('Cleanup Workspace') {
+            steps {
+                deleteDir()
+            }
+        }
         stage('Checkout') {
             steps {
                 checkout scm
@@ -18,7 +23,6 @@ pipeline {
         }
         stage('Sync Branch') {
             steps {
-                // Make sure workspace is fully aligned to remote main!
                 sh 'git fetch origin main'
                 sh 'git reset --hard origin/main'
             }
