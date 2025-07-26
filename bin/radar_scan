@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # shellcheck disable=SC2034
-VERSION="1.0.7"
+VERSION="1.0.6"
 
 # --- Vault Radar/HCP config loader ---
 load_vault_env_config() {
