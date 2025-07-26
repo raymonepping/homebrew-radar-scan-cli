@@ -10,11 +10,7 @@ pipeline {
         GITHUB_TOKEN             = credentials('GITHUB_TOKEN')
     }
     stages {
-        stage('Cleanup Workspace') {
-            steps {
-                deleteDir()
-            }
-        }
+        stage('Cleanup Workspace') { steps { deleteDir() } }
         stage('Checkout') {
             steps {
                 checkout scm
@@ -43,16 +39,24 @@ pipeline {
                     self_doc -t ./tpl -f ./bin/radar_scan -d . -o README.md
                 '''
             }
-        } 
+        }
         stage('Setup Git Credentials') {
             steps {
                 sh 'git config --global user.email jenkins@example.com'
                 sh 'git config --global user.name "Jenkins Bot"'
+                // Embed your GitHub token for authenticated push
                 sh 'git remote set-url origin https://$GITHUB_TOKEN@github.com/raymonepping/homebrew-radar-scan-cli.git'
             }
         }
         stage('Commit & Push') {
-            steps { sh 'commit_gh --bump patch --verify' }
+            steps {
+                // Commit any doc updates, do NOT bump/tag again!
+                sh '''
+                    git add README.md
+                    git commit -m "Update self-documentation [ci skip]" || echo "No changes to commit"
+                    git push origin main
+                '''
+            }
         }
     }
 }
