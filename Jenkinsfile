@@ -27,7 +27,14 @@ pipeline {
             steps { sh 'sanity_check ./bin/radar_scan' }
         }
         stage('Scan folder') {
-            steps { sh 'radar_scan --disable-ui --type folder ./ --format json --outfile scan_file' }
+            steps { 
+                    sh '''
+                        pwd
+                        ls -l ./
+                        radar_scan --disable-ui --type folder ./ --format json --outfile scan_file
+                        cat scan_file || echo "no scan_file generated"
+                    '''        
+                }
         }
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
