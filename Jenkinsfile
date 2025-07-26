@@ -9,12 +9,10 @@ pipeline {
                 sh 'bump_version ./bin/radar_scan --patch'
             }
         }
-    }
-    stages {
         stage('Scan folder') {
             steps {
                 sh 'radar_scan --type folder ./ --format json --outfile scan_file'
             }
         }
-    }    
+    }
 }
