@@ -127,11 +127,6 @@ pipeline {
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
-        stage('Generate Folder Tree') {
-            steps {
-                sh 'folder_tree --output markdown --hidden > FOLDER_TREE.md'
-            }
-        }
         stage('Generate Self Doc') {
             steps {
                 sh '''
