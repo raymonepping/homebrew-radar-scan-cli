@@ -16,8 +16,11 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up Bash dependencies
-      run: sudo apt-get update && sudo apt-get install -y jq
+    - name: Download jq (super fast)
+      run: |
+        curl -Lo jq https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-linux64
+        chmod +x jq
+        sudo mv jq /usr/local/bin
 
     - name: Create repo metadata for Vault Radar
       run: |
@@ -51,7 +54,6 @@ jobs:
         # Archive artifact for all builds
         mkdir -p findings
         mv scan_file findings/ || true
-        # No hard exit, always return success
         exit 0
 
     - name: Archive radar_scan findings
