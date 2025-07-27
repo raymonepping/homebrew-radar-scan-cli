@@ -47,7 +47,7 @@
 ---
 ### GitHub Token (secret / github) 🚨
 
-- **Value:** `GITHUB_TOKEN=ghp_1234567890abcdefghijklmnopqrstuvwxyz`
+- **Value:** `GH_TOKEN=ghp_1234567890abcdefghijklm`
 - **Languages:** bash, python, node, docker
 - **Severity:** high ![](https://img.shields.io/badge/High-high-red)
 - **Category:** secret 🗝️ ![](https://img.shields.io/badge/Secret-secret-blue)
