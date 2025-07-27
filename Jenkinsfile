@@ -28,25 +28,43 @@ pipeline {
         }
         stage('Scan folder') {
             steps {
-                sh '''
-                    radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
-                    if [ -f scan_file ]; then
-                        echo "✅ scan_file generated"
-                        cat scan_file
-                        # Emit warnings-ng compatible output for clickable links:
-                        awk -F, 'NR>1 && $1!="" {split($8,loc,":"); printf "%s:%s: warning: %s in %s\\n", loc[1], loc[2], $2, $8}' scan_file
-                        if grep -q -v '^category' scan_file; then
-                            echo "🛑 SECRETS/PII FOUND! Failing build."
-                            exit 1
-                        else
-                            echo "✅ No secrets found."
-                        fi
-                    else
-                        echo "❌ scan_file NOT generated"
-                        ls -lh .
-                        exit 2
-                    fi
-                '''
+                script {
+                    def scanStatus = sh(
+                        script: '''
+                            radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
+                            if [ -f scan_file ]; then
+                                echo "✅ scan_file generated"
+                                cat scan_file
+                                # Convert findings to warnings-ng format for clickable links
+                                awk -F, 'NR>1 && $8!="" { split($8,loc,":"); printf "::warning file=%s,line=%s::%s: %s\\n", loc[1], loc[2], $2, $8 }' scan_file > warnings.log
+                                if grep -q -v '^category' scan_file; then
+                                    echo "🛑 SECRETS/PII FOUND! Failing build."
+                                    exit 1
+                                else
+                                    echo "✅ No secrets found."
+                                fi
+                            else
+                                echo "❌ scan_file NOT generated"
+                                ls -lh .
+                                exit 2
+                            fi
+                        ''',
+                        returnStatus: true
+                    )
+                    archiveArtifacts artifacts: 'scan_file', allowEmptyArchive: true
+                    recordIssues enabledForFailure: true, tools: [genericParser(
+                        name: 'VaultRadar Findings',
+                        pattern: 'warnings.log',
+                        regexp: '^::warning file=(.*),line=([0-9]+)::(.*)$',
+                        fileName: '$1',
+                        line: '$2',
+                        message: '$3',
+                        severity: 'HIGH'
+                    )]
+                    if (scanStatus != 0) {
+                        error("Secrets/PII found! Failing build.")
+                    }
+                }
             }
         }
         stage('Bump Version') {
@@ -88,16 +106,7 @@ pipeline {
     }
     post {
         always {
-            // Archive scan_file and any scan artifacts for every build
-            archiveArtifacts artifacts: '*.csv,*.md,scan_file', onlyIfSuccessful: false
-
-            // Surface findings as clickable warnings in Blue Ocean/warnings-ng UI
-            recordIssues tools: [genericParser(
-                name: 'VaultRadarScan',
-                regexp: '^([^:]+):(\\d+): warning: (.*)$',
-                fileNamePattern: 'scan_file',
-                example: 'vault-scenarios.md:22: warning: PII - Social Security Number detected'
-            )]
+            archiveArtifacts artifacts: 'scan_file', allowEmptyArchive: true
         }
     }
 }
