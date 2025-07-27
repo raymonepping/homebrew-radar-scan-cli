@@ -16,16 +16,8 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Set up dependencies
-      run: sudo apt-get update && sudo apt-get install -y jq unzip
-
-    - name: Download Vault Radar (latest)
-      run: |
-        export LATEST_VERSION=$(curl -s https://api.releases.hashicorp.com/v1/releases/vault-radar/latest | jq -r .version)
-        curl -s -L https://releases.hashicorp.com/vault-radar/${LATEST_VERSION}/vault-radar_${LATEST_VERSION}_linux_amd64.zip -o vr.zip
-        unzip -q vr.zip -d vr
-        mv vr/vault-radar .
-        chmod +x vault-radar
+    - name: Set up Bash dependencies
+      run: sudo apt-get update && sudo apt-get install -y jq
 
     - name: Debug HCP Env Vars (safe)
       run: |
@@ -37,35 +29,30 @@ jobs:
         HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
         HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
 
-    - name: Run Vault Radar
-      env: 
+    - name: Run radar_scan (Bash CLI)
+      env:
         HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
         HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
         HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
       run: |
-        echo "Event name: ${{ github.event_name }}"
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          head_ref="${{ github.event.pull_request.head.sha }}"
-          base_ref="${{ github.event.pull_request.base.sha }}"
-          ref_name="${{ github.head_ref }}"
-          ./vault-radar scan ci pr \
-            --head-ref "$head_ref" \
-            --base-ref "$base_ref" \
-            --ref-name "$ref_name" \
-            -s high \
-            -o vault-radar.jsonl \
-            -l vault-radar.log \
-            --skip-ignored \
-            --pretty=gha_pr
+        chmod +x bin/radar_scan
+        bin/radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
+        if [ -f scan_file ]; then
+          echo "✅ scan_file generated"
+          cat scan_file
         else
-          ./vault-radar scan ci tip -s high -o vault-radar.jsonl -l vault-radar.log --pretty=gha
+          echo "❌ scan_file NOT generated"
+          ls -lh .
+          exit 2
         fi
+        # Archive artifact for all builds
+        mkdir -p findings
+        mv scan_file findings/
+        exit ${exit_code:-0}
 
-    - name: Archive Vault Radar findings
+    - name: Archive radar_scan findings
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: vault-radar-results
-        path: |
-          vault-radar.jsonl
-          vault-radar.log
+        name: radar-scan-results
+        path: findings/scan_file
