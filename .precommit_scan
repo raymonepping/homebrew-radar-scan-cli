@@ -1,2 +1,0 @@
-category,description,created_at,author,severity,is_historic,deep_link,path,value_hash,fingerprint,textual_context,activeness,tags,managed_location,managed_location_is_latest,total_managed_locations
-pii,PII - Social Security Number,,,low,,stream:///vault-scenarios.md:22:15,vault-scenarios.md,byhDnh2HpkPFtKp4QuDPagCMnOpHgA1C7ZTFVd0RbPs,46ae895f2dcc66aff55d4d5cf496f943f72b06430c4af08543d202ad4f94f5f8,...Value:** `***`,unknown,,,,0
