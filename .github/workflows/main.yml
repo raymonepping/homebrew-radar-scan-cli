@@ -27,21 +27,31 @@ jobs:
         mv vr/vault-radar .
         chmod +x vault-radar
 
+    - name: Debug HCP Env Vars (safe)
+      run: |
+        echo "HCP_CLIENT_ID: ${HCP_CLIENT_ID:+set}"
+        echo "HCP_CLIENT_SECRET: ${HCP_CLIENT_SECRET:+set}"
+        echo "HCP_PROJECT_ID: ${HCP_PROJECT_ID:+set}"
+      env:
+        HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+        HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+        HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+
     - name: Run Vault Radar
       env: 
         HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
         HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
         HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
       run: |
-        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-          head_ref="${{ github.event.pull_request.head.sha }}" 
+        echo "Event name: ${{ github.event_name }}"
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          head_ref="${{ github.event.pull_request.head.sha }}"
           base_ref="${{ github.event.pull_request.base.sha }}"
           ref_name="${{ github.head_ref }}"
-
           ./vault-radar scan ci pr \
-            --head-ref ${head_ref} \
-            --base-ref ${base_ref} \
-            --ref-name ${ref_name} \
+            --head-ref "$head_ref" \
+            --base-ref "$base_ref" \
+            --ref-name "$ref_name" \
             -s high \
             -o vault-radar.jsonl \
             -l vault-radar.log \
