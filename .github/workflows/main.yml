@@ -50,16 +50,6 @@ jobs:
         run: |
           echo '[{"name":"radar-scan-cli","url":"https://github.com/raymonepping/homebrew-radar-scan-cli"}]' > ~/.scan.repositories.json
 
-      - name: Debug HCP Env Vars (safe)
-        run: |
-          echo "HCP_CLIENT_ID: ${HCP_CLIENT_ID:+set}"
-          echo "HCP_CLIENT_SECRET: ${HCP_CLIENT_SECRET:+set}"
-          echo "HCP_PROJECT_ID: ${HCP_PROJECT_ID:+set}"
-        env:
-          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
-          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
-          HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
-
       - name: Run radar_scan (Bash CLI)
         env:
           HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
