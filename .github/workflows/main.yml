@@ -11,63 +11,64 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Set up Bash dependencies
-      run: sudo apt-get update && sudo apt-get install -y jq
+      - name: Set up Bash dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq
 
-    - name: Install Homebrew
-      run: |
-        yes '' | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-        echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> $GITHUB_ENV
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+      - name: Install Homebrew
+        run: |
+          yes '' | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-    - name: Install Vault Radar
-      run: |
-        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-        brew tap hashicorp/tap
-        brew install vault-radar
+      - name: Add Homebrew to PATH
+        run: echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
 
-    - name: Create repo metadata for Vault Radar
-      run: |
-        echo '[{"name":"radar-scan-cli","url":"https://github.com/raymonepping/homebrew-radar-scan-cli"}]' > ~/.scan.repositories.json
+      - name: Install Vault Radar
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew tap hashicorp/tap
+          brew install vault-radar
 
-    - name: Debug HCP Env Vars (safe)
-      run: |
-        echo "HCP_CLIENT_ID: ${HCP_CLIENT_ID:+set}"
-        echo "HCP_CLIENT_SECRET: ${HCP_CLIENT_SECRET:+set}"
-        echo "HCP_PROJECT_ID: ${HCP_PROJECT_ID:+set}"
-      env:
-        HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
-        HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
-        HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+      - name: Create repo metadata for Vault Radar
+        run: |
+          echo '[{"name":"radar-scan-cli","url":"https://github.com/raymonepping/homebrew-radar-scan-cli"}]' > ~/.scan.repositories.json
 
-    - name: Run radar_scan (Bash CLI)
-      env:
-        HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
-        HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
-        HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
-        PATH: /home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
-      run: |
-        chmod +x bin/radar_scan
-        bin/radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
-        if [ -f scan_file ]; then
-          echo "✅ scan_file generated"
-          cat scan_file
-        else
-          echo "❌ scan_file NOT generated"
-          ls -lh .
-        fi
-        mkdir -p findings
-        mv scan_file findings/ || true
-        exit 0
+      - name: Debug HCP Env Vars (safe)
+        run: |
+          echo "HCP_CLIENT_ID: ${HCP_CLIENT_ID:+set}"
+          echo "HCP_CLIENT_SECRET: ${HCP_CLIENT_SECRET:+set}"
+          echo "HCP_PROJECT_ID: ${HCP_PROJECT_ID:+set}"
+        env:
+          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+          HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
 
-    - name: Archive radar_scan findings
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: radar-scan-results
-        path: findings/scan_file
+      - name: Run radar_scan (Bash CLI)
+        env:
+          HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+          HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+          HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+          PATH: /home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
+        run: |
+          chmod +x bin/radar_scan
+          bin/radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
+          if [ -f scan_file ]; then
+            echo "✅ scan_file generated"
+            cat scan_file
+          else
+            echo "❌ scan_file NOT generated"
+            ls -lh .
+          fi
+          mkdir -p findings
+          mv scan_file findings/ || true
+          exit 0
+
+      - name: Archive radar_scan findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: radar-scan-results
+          path: findings/scan_file
