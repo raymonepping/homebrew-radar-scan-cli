@@ -1,0 +1,61 @@
+name: Vault Radar Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  vault-radar:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up dependencies
+      run: sudo apt-get update && sudo apt-get install -y jq unzip
+
+    - name: Download Vault Radar (latest)
+      run: |
+        export LATEST_VERSION=$(curl -s https://api.releases.hashicorp.com/v1/releases/vault-radar/latest | jq -r .version)
+        curl -s -L https://releases.hashicorp.com/vault-radar/${LATEST_VERSION}/vault-radar_${LATEST_VERSION}_linux_amd64.zip -o vr.zip
+        unzip -q vr.zip -d vr
+        mv vr/vault-radar .
+        chmod +x vault-radar
+
+    - name: Run Vault Radar
+      env: 
+        HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
+        HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
+        HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          head_ref="${{ github.event.pull_request.head.sha }}" 
+          base_ref="${{ github.event.pull_request.base.sha }}"
+          ref_name="${{ github.head_ref }}"
+
+          ./vault-radar scan ci pr \
+            --head-ref ${head_ref} \
+            --base-ref ${base_ref} \
+            --ref-name ${ref_name} \
+            -s high \
+            -o vault-radar.jsonl \
+            -l vault-radar.log \
+            --skip-ignored \
+            --pretty=gha_pr
+        else
+          ./vault-radar scan ci tip -s high -o vault-radar.jsonl -l vault-radar.log --pretty=gha
+        fi
+
+    - name: Archive Vault Radar findings
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: vault-radar-results
+        path: |
+          vault-radar.jsonl
+          vault-radar.log
