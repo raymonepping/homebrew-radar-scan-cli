@@ -33,7 +33,12 @@ pipeline {
                     if [ -f scan_file ]; then
                         echo "✅ scan_file generated"
                         cat scan_file
-                        # Check for findings (any non-header line = secret/PII found)
+                        # Show clickable "links" to each flagged file/line
+                        findings=$(awk -F',' 'NR>1 && $7!="" {split($7, loc, ":"); printf "🔗 See finding: %s (line %s)\\n", loc[1], loc[2]}' scan_file)
+                        if [ ! -z "$findings" ]; then
+                            echo "$findings"
+                        fi
+                        # Fail if any non-header line (secret/PII found)
                         if grep -q -v '^category' scan_file; then
                             echo "🛑 SECRETS/PII FOUND! Failing build."
                             exit 1
@@ -48,14 +53,11 @@ pipeline {
                 '''
             }
         }
-
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
         stage('Generate Folder Tree') {
-            steps {
-                sh 'folder_tree --output markdown --hidden > FOLDER_TREE.md'
-            }
+            steps { sh 'folder_tree --output markdown --hidden > FOLDER_TREE.md' }
         }
         stage('Generate Self Doc') {
             steps {
@@ -84,6 +86,12 @@ pipeline {
                 sh "echo \"Token length: \${#GITHUB_TOKEN}\""
                 sh "git push origin main"
             }
+        }
+    }
+    post {
+        always {
+            // Archive scan_file even if build fails
+            archiveArtifacts artifacts: 'scan_file', onlyIfSuccessful: false
         }
     }
 }
