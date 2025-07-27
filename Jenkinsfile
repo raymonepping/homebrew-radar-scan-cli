@@ -29,7 +29,7 @@ pipeline {
         stage('Scan folder') {
             steps {
                 sh '''
-                    radar_scan --disable-ui --type folder ./ --format md --outfile scan_folder.md || exit_code=$?
+                    vault-radar scan folder -p . -o example -f csv --disable-ui || exit_code=$?
                     if [ -f scan_file ]; then
                         echo "✅ scan_file generated"
                         cat scan_file
