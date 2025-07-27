@@ -16,11 +16,20 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Download jq (super fast)
+    - name: Set up Bash dependencies
+      run: sudo apt-get update && sudo apt-get install -y jq
+
+    - name: Install Homebrew
       run: |
-        curl -Lo jq https://github.com/stedolan/jq/releases/download/jq-1.7.1/jq-linux64
-        chmod +x jq
-        sudo mv jq /usr/local/bin
+        yes '' | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> $GITHUB_ENV
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+    - name: Install Vault Radar
+      run: |
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        brew tap hashicorp/tap
+        brew install vault-radar
 
     - name: Create repo metadata for Vault Radar
       run: |
@@ -41,6 +50,7 @@ jobs:
         HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
         HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
         HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+        PATH: /home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
       run: |
         chmod +x bin/radar_scan
         bin/radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
@@ -51,7 +61,6 @@ jobs:
           echo "❌ scan_file NOT generated"
           ls -lh .
         fi
-        # Archive artifact for all builds
         mkdir -p findings
         mv scan_file findings/ || true
         exit 0
