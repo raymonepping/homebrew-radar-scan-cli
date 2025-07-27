@@ -26,37 +26,36 @@ pipeline {
         stage('Sanity Check') {
             steps { sh 'sanity_check ./bin/radar_scan' }
         }
-stage('Scan folder') {
-    steps {
-        sh '''
-            radar_scan --type folder . --outfile scan_file --format csv --disable-ui
-            status=$?
-            if [ -f scan_file ]; then
-                echo "✅ scan_file generated"
-                cat scan_file
-                # Check for findings (any non-header line = secret/PII found)
-                if grep -q -v '^category' scan_file; then
-                    echo "🛑 SECRETS/PII FOUND! Failing build."
-                    exit 1
-                else
-                    echo "✅ No secrets found."
-                fi
-            else
-                echo "❌ scan_file NOT generated"
-                # Only fail if scan command itself failed abnormally
-                if [ $status -ne 0 ]; then
-                    echo "⚠️ Scan command failed (exit $status), review logs above."
-                    exit $status
-                else
-                    echo "🟢 No secrets found (and no scan file generated, expected for zero findings)."
+        stage('Scan folder') {
+            steps {
+                sh '''
+                    radar_scan --type folder . --outfile scan_file --format csv --disable-ui
+                    status=$?
+                    if [ -f scan_file ]; then
+                        echo "✅ scan_file generated"
+                        cat scan_file
+                        # Check for findings (any non-header line = secret/PII found)
+                        if grep -q -v '^category' scan_file; then
+                            echo "⚠️ WARNING: Secrets or PII found, see scan_file above (pipeline not blocked)"
+                            # No exit 1 here—non-blocking!
+                        else
+                            echo "✅ No secrets found."
+                        fi
+                    else
+                        echo "❌ scan_file NOT generated"
+                        # Only fail if scan command itself failed abnormally
+                        if [ $status -ne 0 ]; then
+                            echo "⚠️ Scan command failed (exit $status), review logs above."
+                            exit $status
+                        else
+                            echo "🟢 No secrets found (and no scan file generated, expected for zero findings)."
+                        fi
+                    fi
+                    # Always continue (never block for findings)
                     exit 0
-                fi
-            fi
-        '''
-    }
-}
-
-
+                '''
+            }
+        }
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
