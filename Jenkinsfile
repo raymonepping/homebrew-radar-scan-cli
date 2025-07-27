@@ -29,7 +29,7 @@ pipeline {
         stage('Scan folder') {
             steps {
                 sh '''
-                    radar_scan --type folder . --outfile scan_file -f csv --disable-ui || exit_code=$?
+                    radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
                     if [ -f scan_file ]; then
                         echo "✅ scan_file generated"
                         cat scan_file
