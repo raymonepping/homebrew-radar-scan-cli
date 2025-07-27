@@ -1,4 +1,4 @@
-## 📁 Folder Tree - 2025-07-27 09:06:42 ##
+## 📁 Folder Tree - 2025-07-27 17:22:53 ##
 
 [![Folder Tree](https://img.shields.io/badge/folder--tree-generated-blue?logo=tree&style=flat-square)](./FOLDER_TREE.md)
 [![Folder Tree Version](https://img.shields.io/badge/folder--tree-v1.5.6-purple?style=flat-square)](./FOLDE[32m✅ Markdown output written to (overwrite): FOLDER_TREE.md[0m
@@ -28,8 +28,9 @@ pt-defensive--mode-blueviolet?logo=gnubash&logoColor=white&style=flat-square)](h
 |-- .version
 |-- FOLDER_TREE.md
 |-- LICENSE
+|-- README.md
 `-- reload_version.sh*
 
-6 directories, 19 files
+6 directories, 20 files
 
 ---

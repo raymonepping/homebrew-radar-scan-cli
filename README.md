@@ -58,9 +58,10 @@ export FOLDER_TREE_HOME=/opt/homebrew/opt/..
 |-- .version
 |-- FOLDER_TREE.md
 |-- LICENSE
+|-- README.md
 `-- reload_version.sh*
 
-6 directories, 19 files
+6 directories, 20 files
 ```
 
 ---
