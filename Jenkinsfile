@@ -33,8 +33,8 @@ pipeline {
                     if [ -f scan_file ]; then
                         echo "✅ scan_file generated"
                         cat scan_file
-                        # Emit warnings-ng compatible output for clickable links:
-                        awk -F, 'NR>1 && $1!="" {split($8,loc,":"); printf "%s:%s: warning: %s in %s\\n", loc[1], loc[2], $2, $8}' scan_file
+                        # Print clickable file:line links for easy review
+                        awk -F, 'NR>1 && $8!="" { split($8,loc,":"); printf "See finding: %s (line %s)\\n", loc[1], loc[2] }' scan_file
                         if grep -q -v '^category' scan_file; then
                             echo "🛑 SECRETS/PII FOUND! Failing build."
                             exit 1
@@ -49,6 +49,7 @@ pipeline {
                 '''
             }
         }
+
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
@@ -88,16 +89,7 @@ pipeline {
     }
     post {
         always {
-            // Archive scan_file and any scan artifacts for every build
-            archiveArtifacts artifacts: '*.csv,*.md,scan_file', onlyIfSuccessful: false
-
-            // Surface findings as clickable warnings in Blue Ocean/warnings-ng UI
-            recordIssues tools: [genericParser(
-                name: 'VaultRadarScan',
-                regexp: '^([^:]+):(\\d+): warning: (.*)$',
-                fileNamePattern: 'scan_file',
-                example: 'vault-scenarios.md:22: warning: PII - Social Security Number detected'
-            )]
+            archiveArtifacts artifacts: 'scan_file', allowEmptyArchive: true
         }
     }
 }
