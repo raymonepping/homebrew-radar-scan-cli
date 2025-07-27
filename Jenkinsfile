@@ -33,14 +33,22 @@ pipeline {
                     if [ -f scan_file ]; then
                         echo "✅ scan_file generated"
                         cat scan_file
+                        # Check for findings (any non-header line = secret/PII found)
+                        if grep -q -v '^category' scan_file; then
+                            echo "🛑 SECRETS/PII FOUND! Failing build."
+                            exit 1
+                        else
+                            echo "✅ No secrets found."
+                        fi
                     else
                         echo "❌ scan_file NOT generated"
                         ls -lh .
+                        exit 2
                     fi
-                    exit ${exit_code:-0}
                 '''
             }
         }
+
         stage('Bump Version') {
             steps { sh 'bump_version ./bin/radar_scan --patch' }
         }
