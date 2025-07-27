@@ -31,7 +31,7 @@
 [⬆️ Back to top](#vault-radar-scenarios)
 
 ---
-### AWS Access Key (secret / AWS) 🚨++
+### AWS Access Key (secret / AWS) 🚨+++
 
 - **Value:** `AWS_ACCESS_KEY_ID=AKIA1234567890FAKE`
 - **Languages:** bash, python, docker, terraform, node
