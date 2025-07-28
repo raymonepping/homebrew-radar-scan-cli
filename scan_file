@@ -1,2 +1,0 @@
-category,description,created_at,author,severity,is_historic,deep_link,path,value_hash,fingerprint,textual_context,activeness,tags,managed_location,managed_location_is_latest,total_managed_locations
-pii,PII - Social Security Number,,,low,,file://raymon.epping-MXF232LLC3/Users/raymon.epping/Documents/VSC/MacOS_Environment/vault_radar/vault-scenarios.md:22:15,vault-scenarios.md,byhDnh2HpkPFtKp4QuDPagCMnOpHgA1C7ZTFVd0RbPs,84c4d525e37ea8224f44f5e72ce1aa66f6a5bfbc763167e6f0d43aecec65327b,...Value:** `***`,unknown,,,,0
