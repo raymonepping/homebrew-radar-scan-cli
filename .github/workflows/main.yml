@@ -23,6 +23,7 @@ jobs:
           HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
         run: |
           docker run --rm \
+            --platform linux/amd64 \
             --env HCP_CLIENT_ID \
             --env HCP_CLIENT_SECRET \
             --env HCP_PROJECT_ID \
