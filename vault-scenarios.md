@@ -34,7 +34,7 @@
 ### AWS Access Key (secret / AWS) 🚨
 
 - **Value:** `GITHUB_TOKEN=ghp_1234567890abcdefghijklmnopqrstuvwxyz`
-- **Value:** `AWS_ACCESS_KEY_ID=AKIA1234567890FAKE`
+AWS_ACCESS_KEY_ID=AKIA1234567890FAKE
 - **Languages:** bash, python, docker, terraform, node
 - **Severity:** high ![](https://img.shields.io/badge/High-high-red)
 - **Category:** secret 🗝️ ![](https://img.shields.io/badge/Secret-secret-blue)
