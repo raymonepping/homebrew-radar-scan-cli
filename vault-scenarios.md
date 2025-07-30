@@ -17,7 +17,7 @@
 <details>
 <summary>🚨 <b>High Severity</b></summary>
 
-### SSN (pii / PII) 🚨
+### SSN (pii / PII) 🚨 +
 
 123-45-6789
 - **Languages:** python, terraform, bash
