@@ -67,6 +67,12 @@ jobs:
           mkdir -p findings
           mv scan_file.csv findings/ || true
 
+          # 🔎 Low severity warning (non-blocking)
+          if grep -iqE ',low,' findings/scan_file.csv; then
+            echo "::warning file=findings/scan_file.csv,title=Low severity detected::ℹ️ Vault Radar found low severity issues"
+            echo "ℹ️ Low severity findings detected" >> $GITHUB_STEP_SUMMARY
+          fi
+          
           # 🔎 Medium severity warning (non-blocking)
           if grep -iqE ',medium,' findings/scan_file.csv; then
             echo "::warning file=findings/scan_file.csv,title=Medium severity detected::⚠️ Vault Radar found medium severity issues"
