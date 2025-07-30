@@ -30,7 +30,7 @@ jobs:
       - name: 🔄 Pull image (warm cache)
         run: docker pull repping/vault-radar-cli:latest || true
 
-            - name: 🛡️ Run Vault Radar inside container
+      - name: 🛡️ Run Vault Radar inside container
         env:
           HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
           HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
