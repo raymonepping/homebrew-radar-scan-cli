@@ -45,7 +45,7 @@
 [⬆️ Back to top](#vault-radar-scenarios)
 
 ---
-### GitHub Token (secret / github) 🚨 ++
+### GitHub Token (secret / github) 🚨 +++
 
 - **Languages:** bash, python, node, docker
 - **Severity:** high ![](https://img.shields.io/badge/High-high-red)
