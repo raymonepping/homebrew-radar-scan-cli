@@ -22,6 +22,7 @@ jobs:
           HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
           HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
         run: |
+          set +e
           docker run --rm \
             --platform linux/amd64 \
             --env HCP_CLIENT_ID \
@@ -34,11 +35,29 @@ jobs:
             --path . \
             --disable-ui \
             --outfile scan_file \
-            --format csv || true
+            --format csv
+          EXIT_CODE=$?
+
+          if [[ -f scan_file ]]; then
+            echo "✅ scan_file generated"
+            echo ""
+            echo "🔍 Vault Radar Findings:"
+            echo "------------------------"
+            cat scan_file
+            echo "------------------------"
+          else
+            echo "❌ scan_file NOT generated"
+            ls -lh
+          fi
+
+          mkdir -p findings
+          mv scan_file findings/ || true
+
+          exit $EXIT_CODE
 
       - name: 📦 Archive scan results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: radar-scan-results
-          path: scan_file
+          path: findings/scan_file
