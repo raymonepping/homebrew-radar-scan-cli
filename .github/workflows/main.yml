@@ -23,11 +23,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-vault-radar-cli
+          key: ${{ runner.os }}-vault-radar-cli
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-
 
-      - name: 🔄 Pull cached image (optional)
+      - name: 🔄 Pull image (warm cache)
         run: docker pull repping/vault-radar-cli:latest || true
 
       - name: 🛡️ Run Vault Radar inside container
@@ -66,6 +66,12 @@ jobs:
 
           mkdir -p findings
           mv scan_file.csv findings/ || true
+
+          # ⚠️ Warn if medium findings are present (non-blocking)
+          if grep -qE ',(MEDIUM),' findings/scan_file.csv; then
+            echo "⚠️ Medium severity findings detected"
+            # Optional: Add `exit 0` if you want to make this block exit early
+          fi
 
           # 🚨 Fail the job if high or critical findings are present
           if grep -qE ',(HIGH|CRITICAL),' findings/scan_file.csv; then
