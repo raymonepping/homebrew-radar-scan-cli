@@ -1,4 +1,4 @@
-name: Vault Radar Scan (via Container)
+name: Vault Radar Scan
 
 on:
   push:
@@ -11,32 +11,68 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: 🛡️ Run Vault Radar inside container
+      # --- Homebrew Cache block
+      - name: Cache Homebrew
+        uses: actions/cache@v4
+        with:
+          path: /home/linuxbrew/.linuxbrew
+          key: homebrew-${{ runner.os }}-vaultradar
+          restore-keys: |
+            homebrew-${{ runner.os }}-
+
+      - name: Download jq (static binary)
+        run: |
+          curl -Ls -o /usr/local/bin/jq https://github.com/jqlang/jq/releases/latest/download/jq-linux-amd64
+          chmod +x /usr/local/bin/jq
+
+      # Only install Homebrew if not cached
+      - name: Install Homebrew
+        if: steps.cache-homebrew.outputs.cache-hit != 'true'
+        run: |
+          yes '' | /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+      - name: Add Homebrew to PATH
+        run: echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
+
+      # Only install vault-radar if not already present
+      - name: Install Vault Radar
+        run: |
+          eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+          brew tap hashicorp/tap
+          brew list vault-radar || brew install vault-radar
+
+      - name: Create repo metadata for Vault Radar
+        run: |
+          echo '[{"name":"radar-scan-cli","url":"https://github.com/raymonepping/homebrew-radar-scan-cli"}]' > ~/.scan.repositories.json
+
+      - name: Run radar_scan (Bash CLI)
         env:
           HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
           HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
           HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
+          PATH: /home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
         run: |
-          docker run --rm \
-            --env HCP_CLIENT_ID \
-            --env HCP_CLIENT_SECRET \
-            --env HCP_PROJECT_ID \
-            -v "$PWD":/data \
-            repping/vault_radar_container.slim \
-            vault-radar scan folder \
-            --path /data \
-            --disable-ui \
-            --outfile /data/scan_file \
-            --format csv || true
+          chmod +x bin/radar_scan
+          bin/radar_scan --type folder . --outfile scan_file --format csv --disable-ui || exit_code=$?
+          if [ -f scan_file ]; then
+            echo "✅ scan_file generated"
+            cat scan_file
+          else
+            echo "❌ scan_file NOT generated"
+            ls -lh .
+          fi
+          mkdir -p findings
+          mv scan_file findings/ || true
+          exit 0
 
-      - name: 📦 Archive scan results
+      - name: Archive radar_scan findings
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: radar-scan-results
-          path: scan_file
+          path: findings/scan_file
