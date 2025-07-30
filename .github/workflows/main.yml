@@ -28,7 +28,7 @@ jobs:
             ${{ runner.os }}-
 
       - name: 🔄 Pull image (warm cache)
-        run: docker pull repping/vault-radar-cli:latest || true
+        run: docker pull repping/vault_radar_container.slim:0.0.2 || true
 
       - name: 🛡️ Run Vault Radar inside container
         env:
