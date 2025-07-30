@@ -30,7 +30,7 @@ jobs:
       - name: 🔄 Pull image (warm cache)
         run: docker pull repping/vault-radar-cli:latest || true
 
-      - name: 🛡️ Run Vault Radar inside container
+            - name: 🛡️ Run Vault Radar inside container
         env:
           HCP_CLIENT_ID: ${{ secrets.HCP_CLIENT_ID }}
           HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
@@ -67,17 +67,22 @@ jobs:
           mkdir -p findings
           mv scan_file.csv findings/ || true
 
-          # ⚠️ Warn if medium findings are present (non-blocking)
+          # 🔎 Medium severity warning (non-blocking)
           if grep -iqE ',medium,' findings/scan_file.csv; then
-            echo "⚠️ Medium severity findings detected"
-          fi
-          
-          # ❌ Block on high or critical severity (case-insensitive)
-          if grep -iqE ',(high|critical),' findings/scan_file.csv; then
-            echo "❌ Blocking due to high or critical severity findings"
-            exit 1
+            echo "::warning file=findings/scan_file.csv,title=Medium severity detected::⚠️ Vault Radar found medium severity issues"
+            echo "⚠️ Medium severity findings detected" >> $GITHUB_STEP_SUMMARY
           fi
 
+          # ❌ High/Critical severity = block
+          if grep -iqE ',(high|critical),' findings/scan_file.csv; then
+            echo "::error file=findings/scan_file.csv,title=High or Critical severity::❌ Vault Radar found HIGH or CRITICAL severity issues"
+            echo "❌ **High or critical severity findings detected. Blocking the build.**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          else
+            echo "✅ No high or critical findings detected" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "📝 Scan results saved to findings/scan_file.csv" >> $GITHUB_STEP_SUMMARY
           exit $EXIT_CODE
 
       - name: 📦 Archive scan results
