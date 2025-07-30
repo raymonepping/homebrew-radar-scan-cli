@@ -22,7 +22,6 @@ jobs:
           HCP_CLIENT_SECRET: ${{ secrets.HCP_CLIENT_SECRET }}
           HCP_PROJECT_ID: ${{ secrets.HCP_PROJECT_ID }}
         run: |
-          set +e
           docker run --rm \
             --platform linux/amd64 \
             --env HCP_CLIENT_ID \
@@ -36,6 +35,7 @@ jobs:
             --disable-ui \
             --outfile scan_file \
             --format csv
+
           EXIT_CODE=$?
 
           if [[ -f scan_file ]]; then
@@ -52,6 +52,12 @@ jobs:
 
           mkdir -p findings
           mv scan_file findings/ || true
+
+          # 🚨 Fail the job if high or critical findings are present
+          if grep -qE ',(HIGH|CRITICAL),' findings/scan_file; then
+            echo "❌ Blocking due to high or critical severity findings"
+            exit 1
+          fi
 
           exit $EXIT_CODE
 
