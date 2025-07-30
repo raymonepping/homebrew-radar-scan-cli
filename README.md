@@ -13,7 +13,7 @@ radar_scan is a Homebrew-installable, wizard-powered CLI.
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Quickstart +
 
 ```bash
 brew tap 
