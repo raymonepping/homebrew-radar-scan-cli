@@ -47,17 +47,17 @@ jobs:
             scan folder \
             --path . \
             --disable-ui \
-            --outfile scan_file \
+            --outfile scan_file.csv \
             --format csv
 
           EXIT_CODE=$?
 
-          if [[ -f scan_file ]]; then
+          if [[ -f scan_file.csv ]]; then
             echo "✅ scan_file generated"
             echo ""
             echo "🔍 Vault Radar Findings:"
             echo "------------------------"
-            cat scan_file
+            cat scan_file.csv
             echo "------------------------"
           else
             echo "❌ scan_file NOT generated"
@@ -65,10 +65,10 @@ jobs:
           fi
 
           mkdir -p findings
-          mv scan_file findings/ || true
+          mv scan_file.csv findings/ || true
 
           # 🚨 Fail the job if high or critical findings are present
-          if grep -qE ',(HIGH|CRITICAL),' findings/scan_file; then
+          if grep -qE ',(HIGH|CRITICAL),' findings/scan_file.csv; then
             echo "❌ Blocking due to high or critical severity findings"
             exit 1
           fi
@@ -80,4 +80,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: radar-scan-results
-          path: findings/scan_file
+          path: findings/scan_file.csv
