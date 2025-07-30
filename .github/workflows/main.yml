@@ -16,18 +16,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: 🐳 Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: 💾 Cache Docker layers
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-vault-radar-cli
-          restore-keys: |
-            ${{ runner.os }}-
-
-      - name: 🔄 Pull image (warm cache)
+      - name: 🔄 Pull image
         run: docker pull repping/vault_radar_container.slim:0.0.2 || true
 
       - name: 🛡️ Run Vault Radar inside container
