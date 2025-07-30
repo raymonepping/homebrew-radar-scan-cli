@@ -29,7 +29,7 @@ jobs:
             --env HCP_PROJECT_ID \
             -v "$PWD":/data \
             -w /data \
-            repping/vault_radar_container.slim \
+            repping/vault_radar_container \
             scan folder \
             --path . \
             --disable-ui \
