@@ -19,7 +19,7 @@
 
 ### SSN (pii / PII) 🚨
 
-- **Value:** `123-45-6789`
+123-45-6789
 - **Languages:** python, terraform, bash
 - **Severity:** high ![](https://img.shields.io/badge/High-high-red)
 - **Category:** pii 📧 ![](https://img.shields.io/badge/Pii-pii-blue)
