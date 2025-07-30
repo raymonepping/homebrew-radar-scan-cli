@@ -19,24 +19,16 @@ jobs:
       - name: 🐳 Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: 💾 Docker Buildx cache
+      - name: 💾 Cache Docker layers
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: buildx-${{ runner.os }}-vault-radar-cli
+          key: ${{ runner.os }}-vault-radar-cli
           restore-keys: |
-            buildx-${{ runner.os }}-
+            ${{ runner.os }}-
 
-      - name: 🏗️ Build Vault Radar container (with cache)
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Dockerfile # or Dockerfile.opt if you prefer the slim variant
-          push: true
-          tags: repping/vault-radar-cli:latest
-          platforms: linux/amd64
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: 🔄 Pull image (warm cache)
+        run: docker pull repping/vault-radar-cli:latest || true
 
       - name: 🛡️ Run Vault Radar inside container
         env:
@@ -51,7 +43,7 @@ jobs:
             --env HCP_PROJECT_ID \
             -v "$PWD":/data \
             -w /data \
-            repping/vault-radar-cli:latest \
+            repping/vault-radar-cli \
             scan folder \
             --path . \
             --disable-ui \
