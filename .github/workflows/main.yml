@@ -68,13 +68,12 @@ jobs:
           mv scan_file.csv findings/ || true
 
           # ⚠️ Warn if medium findings are present (non-blocking)
-          if grep -qE ',(MEDIUM),' findings/scan_file.csv; then
+          if grep -iqE ',medium,' findings/scan_file.csv; then
             echo "⚠️ Medium severity findings detected"
-            # Optional: Add `exit 0` if you want to make this block exit early
           fi
-
-          # 🚨 Fail the job if high or critical findings are present
-          if grep -qE ',(HIGH|CRITICAL),' findings/scan_file.csv; then
+          
+          # ❌ Block on high or critical severity (case-insensitive)
+          if grep -iqE ',(high|critical),' findings/scan_file.csv; then
             echo "❌ Blocking due to high or critical severity findings"
             exit 1
           fi
