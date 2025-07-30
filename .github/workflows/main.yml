@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
 
       - name: 🔄 Pull image
-        run: docker pull repping/vault_radar_container.slim:0.0.2 || true
+        run: docker pull repping/vault_radar_container.slim:1.0.0 || true
 
       - name: 🛡️ Run Vault Radar inside container
         env:
