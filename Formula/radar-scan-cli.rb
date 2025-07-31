@@ -1,10 +1,10 @@
 class RadarScanCli < Formula
   desc "Fast local secret scanning with Vault Radar, Markdown reports, and CI/CD support"
   homepage "https://github.com/raymonepping/radar-scan-cli"
-  url "https://github.com/raymonepping/homebrew-radar-scan-cli/archive/refs/tags/v1.0.5.tar.gz"
-  sha256 "35628e203f29828e3d050ec2930116cb93e31fe802cdfb565ed1b9ee030c19a6"
+  url "https://github.com/raymonepping/homebrew-radar-scan-cli/archive/refs/tags/v1.0.9.tar.gz"
+  sha256 "5ba28310b0961fc79aa502f7843b342c6813009c6a382cd6ae46b0e079be53d1"
   license "MIT"
-  version "1.0.5"
+  version "1.0.9"
 
   depends_on "bash"
   depends_on "jq"
