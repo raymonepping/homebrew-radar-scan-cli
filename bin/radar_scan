@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # shellcheck disable=SC2034
-VERSION="1.0.8"
+VERSION="1.0.9"
 
 # --- Vault Radar/HCP config loader ---
 load_vault_env_config() {
@@ -95,7 +95,7 @@ show_help() {
 Usage:
   $(basename "$0") [--type repo|folder|file|docker-image] [options] [ARG]
 
-  --type <mode>   Scan type: repo (default, batch via JSON), folder, file, or docker-image
+  --type <mode>   Scan type: repo (default, batch via JSON), folder, file, or docker-image(s) via a .scan.images.json file
   --image <ref>   Docker image name:tag (for --type docker-image)
   --format <fmt>  Output format: csv (default), json, sarif, md (Markdown report)
   --disable-ui    Suppress CLI UI/log output
@@ -331,6 +331,80 @@ elif [[ "$TYPE" == "docker-image" ]]; then
     rm -f "$OUTFILE_JSON" "$OUTFILE_MD" 2>/dev/null || true
   fi
   print_divider
+
+elif [[ "$TYPE" == "images" ]]; then
+  # Default images JSON path
+  IMAGES_JSON="${PATH_ARG:-${HOME}/.scan.images.json}"
+  [[ -f "$IMAGES_JSON" ]] || { echo "❌ Images JSON file not found: $IMAGES_JSON"; exit 1; }
+
+  if ! command -v jq &>/dev/null; then
+    echo "❌ jq is required for images mode."
+    exit 1
+  fi
+
+  images_len=$(jq length "$IMAGES_JSON")
+  overall_found=0
+
+  for ((i = 0; i < images_len; i++)); do
+    name=$(jq -r ".[$i].name" "$IMAGES_JSON")
+    image=$(jq -r ".[$i].image" "$IMAGES_JSON")
+    tag=$(jq -r ".[$i].tag" "$IMAGES_JSON")
+    image_ref="$image:$tag"
+    name_safe="$(safe_name "$name")"
+
+    if [[ "$FORMAT" == "md" ]]; then
+      OUTFILE_JSON="scan_${name_safe}_${timestamp}.json"
+      OUTFILE_MD="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.md}"
+    else
+      OUTFILE_JSON="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.${OUTPUT_FORMAT}}"
+      OUTFILE_MD=""
+    fi
+
+    scan_cmd=(vault-radar scan docker-image --image "$image_ref" --outfile "$OUTFILE_JSON" --format "$OUTPUT_FORMAT")
+    [[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
+    [[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
+    echo "🔍 Scanning docker image [$image_ref] ..."
+    [[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
+    "${scan_cmd[@]}"
+
+    # Findings logic (same as your other blocks)
+    if [[ "$FORMAT" == "md" ]]; then
+      findings=$(do_json_findings "$OUTFILE_JSON")
+    elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+      findings=$(do_csv_findings "$OUTFILE_JSON")
+    elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
+      findings=$(do_json_findings "$OUTFILE_JSON")
+    else
+      findings=0
+    fi
+
+    findings="$(echo "$findings" | xargs)"
+
+    if [[ $findings -gt 0 && -f "$OUTFILE_JSON" ]]; then
+      if [[ "$FORMAT" == "md" ]]; then
+        render_markdown_report "$OUTFILE_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
+        printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$OUTFILE_MD"
+        echo "📝 Markdown report generated: $OUTFILE_MD"
+        rm -f "$OUTFILE_JSON"
+      else
+        printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$OUTFILE_JSON"
+        echo "ℹ️  Scan output: $OUTFILE_JSON"
+        [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$OUTFILE_JSON" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
+        [[ "$FORMAT" == "json" ]] && jq -c '.' "$OUTFILE_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
+      fi
+      overall_found=$((overall_found + findings))
+    else
+      echo "✅ No secrets found in docker image $image_ref."
+      echo "🚦 Battle-tested. Clean."
+      rm -f "$OUTFILE_JSON" "$OUTFILE_MD" 2>/dev/null || true
+    fi
+
+    print_divider
+  done
+
+  echo
+  echo "=== Scan complete. Total secrets found across all images: $overall_found ==="
+
 
 # --- File/folder scan ---
 elif [[ "$TYPE" == "file" || "$TYPE" == "folder" ]]; then

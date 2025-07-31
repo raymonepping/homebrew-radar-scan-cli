@@ -1,0 +1,3 @@
+category,description,created_at,author,severity,is_historic,deep_link,path,value_hash,fingerprint,textual_context,activeness,tags,managed_location,managed_location_is_latest,total_managed_locations
+secret,Linux password file,,,medium,,docker://repping/vault_radar_container:1.0.0/etc/passwd,/etc/passwd,0OrAdsy0avjFNs4qgyQ9ZYk/4eoyXg9L1ggApla6wjk,3d64c5ba0f467802a7daea8cc9b7a38354fc372ade6ea81ccb895003a157b4c4,,unknown,,,,0
+secret,Linux shadow file,,,medium,,docker://repping/vault_radar_container:1.0.0/etc/shadow,/etc/shadow,0OrAdsy0avjFNs4qgyQ9ZYk/4eoyXg9L1ggApla6wjk,7777752f8882884d77f9f656390e3a0c423b1cc7a7ca0ab9cd2d4c48318e7a4f,,unknown,,,,0
