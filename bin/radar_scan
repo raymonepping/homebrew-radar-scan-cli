@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # shellcheck disable=SC2034
-VERSION="1.0.9"
+VERSION="1.0.10"
 
 # --- Vault Radar/HCP config loader ---
 load_vault_env_config() {
@@ -89,6 +89,18 @@ fi
 DEFAULT_FORMAT="csv"
 DEFAULT_TYPE="repo"
 USER_OUTFILE=""
+
+# --- .radarignore support ---
+# Looks for local .radarignore, then $HOME/.radarignore, then falls back to built-in
+RADAR_IGNORE_FILE=""
+if [[ -f .radarignore ]]; then
+  RADAR_IGNORE_FILE=".radarignore"
+elif [[ -f "$HOME/.radarignore" ]]; then
+  RADAR_IGNORE_FILE="$HOME/.radarignore"
+fi
+
+# fallback built-in ignore
+BUILTIN_RADAR_IGNORES='/etc/passwd|/etc/shadow'
 
 show_help() {
   cat <<EOF
@@ -178,6 +190,37 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+RADAR_IGNORE_SHOWN=0
+
+filter_scan_output() {
+  local infile="$1"
+  local outfile="$2"
+
+  local ignore_pattern=""
+  if [[ -n "$RADAR_IGNORE_FILE" ]]; then
+    ignore_pattern=$(grep -vE '^\s*#|^\s*$' "$RADAR_IGNORE_FILE" | tr '\n' '|' | sed 's/|$//')
+  else
+    ignore_pattern="$BUILTIN_RADAR_IGNORES"
+  fi
+
+  if [[ "$infile" == *.csv ]]; then
+    {
+      head -n1 "$infile"
+      tail -n +2 "$infile" | awk -F, -v IGNORE="$ignore_pattern" '
+        BEGIN {OFS=FS}
+        $8 !~ IGNORE
+      '
+    } > "$outfile"
+  else
+    # For JSON or other formats, just grep
+    if [[ -n "$ignore_pattern" ]]; then
+      grep -Ev "$ignore_pattern" "$infile" > "$outfile"
+    else
+      cp "$infile" "$outfile"
+    fi
+  fi
+}
+
 print_divider() { echo "----------------------------------------"; }
 
 timestamp="$(date +%Y%m%d_%H%M%S)"
@@ -209,6 +252,12 @@ if [[ "$TYPE" == "repo" ]]; then
 
   repos_len=$(jq length "$REPO_JSON")
   overall_found=0
+
+  if [[ -n "$RADAR_IGNORE_FILE" ]]; then
+    echo "ℹ️  Using Vault Radar ignore file: $RADAR_IGNORE_FILE"
+  else
+    echo "ℹ️  Using built-in ignore pattern: $BUILTIN_RADAR_IGNORES"
+  fi
 
   for ((i = 0; i < repos_len; i++)); do
     name=$(jq -r ".[$i].name" "$REPO_JSON")
@@ -293,47 +342,54 @@ elif [[ "$TYPE" == "docker-image" ]]; then
     OUTFILE_MD=""
   fi
 
-  scan_cmd=(vault-radar scan docker-image --image "$IMAGE_ARG" --outfile "$OUTFILE_JSON" --format "$OUTPUT_FORMAT")
-  [[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
-  [[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
-  echo "🔍 Scanning docker image [$IMAGE_ARG] ..."
-  [[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
-  "${scan_cmd[@]}"
+scan_cmd=(vault-radar scan docker-image --image "$IMAGE_ARG" --outfile "$OUTFILE_JSON" --format "$OUTPUT_FORMAT")
+[[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
+[[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
 
-  # Calculate findings only from JSON used for output
+
+
+echo "🔍 Scanning docker image [$IMAGE_ARG] ..."
+[[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
+"${scan_cmd[@]}"
+
+# --- Filter scan output using .radarignore if present ---
+FILTERED_JSON="${OUTFILE_JSON%.json}.filtered.json"
+filter_scan_output "$OUTFILE_JSON" "$FILTERED_JSON"
+
+if [[ "$FORMAT" == "md" ]]; then
+  findings=$(do_json_findings "$FILTERED_JSON")
+elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
+  findings=$(do_csv_findings "$FILTERED_JSON")
+elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
+  findings=$(do_json_findings "$FILTERED_JSON")
+else
+  findings=0
+fi
+
+findings="$(echo "$findings" | xargs)"
+
+if [[ -f "$FILTERED_JSON" && "$findings" -gt 0 ]]; then
   if [[ "$FORMAT" == "md" ]]; then
-    findings=$(do_json_findings "$OUTFILE_JSON")
-  elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
-    findings=$(do_csv_findings "$OUTFILE_JSON")
-  elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
-    findings=$(do_json_findings "$OUTFILE_JSON")
+    render_markdown_report "$FILTERED_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
+    printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$OUTFILE_MD"
+    echo "📝 Markdown report generated: $OUTFILE_MD"
+    rm -f "$FILTERED_JSON"
   else
-    findings=0
+    printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$FILTERED_JSON"
+    echo "ℹ️  Scan output: $FILTERED_JSON"
+    [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$FILTERED_JSON" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
+    [[ "$FORMAT" == "json" ]] && jq -c '.' "$FILTERED_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
   fi
+  overall_found=$((overall_found + findings))
+else
+  echo "✅ No secrets found in docker image $image_ref."
+  echo "🚦 Battle-tested. Clean."
+  rm -f "$FILTERED_JSON" "$OUTFILE_MD" 2>/dev/null || true
+fi
 
-  findings="$(echo "$findings" | xargs)"
-
-  if [[ $findings -gt 0 && -f "$OUTFILE_JSON" ]]; then
-    if [[ "$FORMAT" == "md" ]]; then
-      render_markdown_report "$OUTFILE_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
-      printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$IMAGE_ARG" "$OUTFILE_MD"
-      echo "📝 Markdown report generated: $OUTFILE_MD"
-      rm -f "$OUTFILE_JSON"
-    else
-      printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$IMAGE_ARG" "$OUTFILE_JSON"
-      echo "ℹ️  Scan output: $OUTFILE_JSON"
-      [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$OUTFILE_JSON" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
-      [[ "$FORMAT" == "json" ]] && jq -c '.' "$OUTFILE_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
-    fi
-  else
-    echo "✅ No secrets found in docker image $IMAGE_ARG."
-    echo "🚦 Battle-tested. Clean."
-    rm -f "$OUTFILE_JSON" "$OUTFILE_MD" 2>/dev/null || true
-  fi
-  print_divider
+print_divider
 
 elif [[ "$TYPE" == "images" ]]; then
-  # Default images JSON path
   IMAGES_JSON="${PATH_ARG:-${HOME}/.scan.images.json}"
   [[ -f "$IMAGES_JSON" ]] || { echo "❌ Images JSON file not found: $IMAGES_JSON"; exit 1; }
 
@@ -344,6 +400,15 @@ elif [[ "$TYPE" == "images" ]]; then
 
   images_len=$(jq length "$IMAGES_JSON")
   overall_found=0
+
+    if [[ -n "$RADAR_IGNORE_FILE" ]]; then
+      echo "ℹ️  Using Vault Radar ignore file: $RADAR_IGNORE_FILE"
+    else
+      echo "ℹ️  Using built-in ignore pattern: $BUILTIN_RADAR_IGNORES"
+    fi
+
+  # Remove master outfile if exists (fresh run)
+  [[ -n "$USER_OUTFILE" && -f "$USER_OUTFILE" ]] && rm -f "$USER_OUTFILE"
 
   for ((i = 0; i < images_len; i++)); do
     name=$(jq -r ".[$i].name" "$IMAGES_JSON")
@@ -356,7 +421,7 @@ elif [[ "$TYPE" == "images" ]]; then
       OUTFILE_JSON="scan_${name_safe}_${timestamp}.json"
       OUTFILE_MD="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.md}"
     else
-      OUTFILE_JSON="${USER_OUTFILE:-scan_${name_safe}_${timestamp}.${OUTPUT_FORMAT}}"
+      OUTFILE_JSON="scan_${name_safe}_${timestamp}.${OUTPUT_FORMAT}"
       OUTFILE_MD=""
     fi
 
@@ -364,43 +429,73 @@ elif [[ "$TYPE" == "images" ]]; then
     [[ -n "$DISABLE_UI" ]] && scan_cmd+=("$DISABLE_UI")
     [[ -n "$OFFLINE" ]] && scan_cmd+=("$OFFLINE")
     echo "🔍 Scanning docker image [$image_ref] ..."
+
     [[ -n "${DEBUG:-}" ]] && echo "[debug] ${scan_cmd[*]}"
     "${scan_cmd[@]}"
 
-    # Findings logic (same as your other blocks)
-    if [[ "$FORMAT" == "md" ]]; then
-      findings=$(do_json_findings "$OUTFILE_JSON")
-    elif [[ "$OUTPUT_FORMAT" == "csv" ]]; then
-      findings=$(do_csv_findings "$OUTFILE_JSON")
-    elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
-      findings=$(do_json_findings "$OUTFILE_JSON")
-    else
-      findings=0
-    fi
+    FILTERED_JSON="${OUTFILE_JSON%.json}.filtered.json"
+    filter_scan_output "$OUTFILE_JSON" "$FILTERED_JSON"
 
-    findings="$(echo "$findings" | xargs)"
-
-    if [[ $findings -gt 0 && -f "$OUTFILE_JSON" ]]; then
-      if [[ "$FORMAT" == "md" ]]; then
-        render_markdown_report "$OUTFILE_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
-        printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$OUTFILE_MD"
-        echo "📝 Markdown report generated: $OUTFILE_MD"
-        rm -f "$OUTFILE_JSON"
+    # ---- AGGREGATE CSV LOGIC ----
+    if [[ "$FORMAT" == "csv" ]]; then
+      # Count number of findings in filtered CSV (excluding header)
+      findings=$(tail -n +2 "$FILTERED_JSON" | wc -l | xargs)
+      if [[ $i -eq 0 ]]; then
+        cp "$FILTERED_JSON" "$USER_OUTFILE"
       else
-        printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$OUTFILE_JSON"
-        echo "ℹ️  Scan output: $OUTFILE_JSON"
-        [[ "$FORMAT" == "csv" ]] && grep -v '^category' "$OUTFILE_JSON" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
-        [[ "$FORMAT" == "json" ]] && jq -c '.' "$OUTFILE_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
+        tail -n +2 "$FILTERED_JSON" >> "$USER_OUTFILE"
       fi
-      overall_found=$((overall_found + findings))
+      # Remove filtered and original to keep things tidy
+      rm -f "$FILTERED_JSON" "$OUTFILE_JSON"
+
+      if [[ $findings -gt 0 ]]; then
+        printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$USER_OUTFILE"
+        echo "ℹ️  Scan output: $USER_OUTFILE"
+        # Optionally, bullet listing as before:
+        grep -v '^category' "$USER_OUTFILE" | tail -n "$findings" | awk -F, '{print "• " $2 " in " $8 " (line: " $10 ")"}'
+      else
+        echo "✅ No secrets found in docker image $image_ref."
+        echo "🚦 Battle-tested. Clean."
+      fi
     else
-      echo "✅ No secrets found in docker image $image_ref."
-      echo "🚦 Battle-tested. Clean."
-      rm -f "$OUTFILE_JSON" "$OUTFILE_MD" 2>/dev/null || true
+
+      # Same logic as before for JSON/MD
+      if [[ "$FORMAT" == "md" ]]; then
+        findings=$(do_json_findings "$FILTERED_JSON")
+      elif [[ "$OUTPUT_FORMAT" == "json" ]]; then
+        findings=$(do_json_findings "$FILTERED_JSON")
+      else
+        findings=0
+      fi
+
+      findings="$(echo "$findings" | xargs)"
+      if [[ $findings -gt 0 && -f "$FILTERED_JSON" ]]; then
+        if [[ "$FORMAT" == "md" ]]; then
+          render_markdown_report "$FILTERED_JSON" "$OUTFILE_MD" "$MD_TEMPLATE"
+          printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$OUTFILE_MD"
+          echo "📝 Markdown report generated: $OUTFILE_MD"
+          rm -f "$FILTERED_JSON"
+        else
+          printf "🛑 %s secrets found in docker image %s (see %s)\n" "$findings" "$image_ref" "$FILTERED_JSON"
+          echo "ℹ️  Scan output: $FILTERED_JSON"
+          [[ "$FORMAT" == "json" ]] && jq -c '.' "$FILTERED_JSON" | while read -r obj; do echo "$obj" | jq -r '"• \(.category) in \(.path) (\(.textual_context // "-"))"'; done
+        fi
+        overall_found=$((overall_found + findings))
+      else
+        echo "✅ No secrets found in docker image $image_ref."
+        echo "🚦 Battle-tested. Clean."
+        rm -f "$FILTERED_JSON" "$OUTFILE_MD" 2>/dev/null || true
+      fi
     fi
 
     print_divider
   done
+
+  if [[ "$FORMAT" == "csv" && -f "$USER_OUTFILE" ]]; then
+    # Optionally count overall findings for CSV (excluding header)
+    overall_found=$(tail -n +2 "$USER_OUTFILE" | wc -l | xargs)
+    [[ $overall_found -lt 0 ]] && overall_found=0
+  fi
 
   echo
   echo "=== Scan complete. Total secrets found across all images: $overall_found ==="

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "ssh-clean",
+    "namespace": "repping",
+    "image": "repping/ssh-clean",
+    "description": "",
+    "last_updated": "2025-06-28T15:33:15.102699Z",
+    "date_registered": "2025-06-23T14:04:39.545565Z",
+    "tag": "latest",
+    "tag_last_updated": "2025-06-28T15:33:13.991016Z",
+    "full_size": 97129494,
+    "full_size_human": "92.63 MB"
+  },
+  {
+    "name": "ssh-container",
+    "namespace": "repping",
+    "image": "repping/ssh-container",
+    "description": "SSH container",
+    "last_updated": "2025-06-22T13:57:24.968209Z",
+    "date_registered": "2025-06-15T12:58:20.114087Z",
+    "tag": "latest",
+    "tag_last_updated": "2025-06-22T13:57:23.899663Z",
+    "full_size": 188752941,
+    "full_size_human": "180.01 MB"
+  },
+  {
+    "name": "ssh-minimal",
+    "namespace": "repping",
+    "image": "repping/ssh-minimal",
+    "description": "",
+    "last_updated": "2025-06-23T09:17:29.409755Z",
+    "date_registered": "2025-06-20T18:17:48.90239Z",
+    "tag": "latest",
+    "tag_last_updated": "2025-06-23T09:17:28.290301Z",
+    "full_size": 43013607,
+    "full_size_human": "41.02 MB"
+  },
+  {
+    "name": "ssh-minimal.slim",
+    "namespace": "repping",
+    "image": "repping/ssh-minimal.slim",
+    "description": "",
+    "last_updated": "2025-06-23T07:59:51.547996Z",
+    "date_registered": "2025-06-23T07:53:28.238563Z",
+    "tag": "latest",
+    "tag_last_updated": "2025-06-23T07:59:50.482711Z",
+    "full_size": 7284984,
+    "full_size_human": "6.95 MB"
+  }
+]

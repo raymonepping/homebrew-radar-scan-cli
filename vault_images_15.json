@@ -1,0 +1,14 @@
+[
+  {
+    "name": "vault-radar-cli",
+    "namespace": "repping",
+    "image": "repping/vault-radar-cli",
+    "description": "",
+    "last_updated": "2025-07-30T13:41:35.019352Z",
+    "date_registered": "2025-07-30T09:49:50.197073Z",
+    "tag": "latest",
+    "tag_last_updated": "2025-07-30T13:41:33.823862Z",
+    "full_size": 35994557,
+    "full_size_human": "34.33 MB"
+  }
+]
